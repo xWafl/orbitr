@@ -1,3 +1,3 @@
 module.exports = {
-    baseUrl: "/ludumdaregame"
+    publicPath: "/ludumdaregame"
 };
