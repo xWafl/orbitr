@@ -19,3 +19,7 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# GH Actions files
+gh-pages
+gh-pages.pub
