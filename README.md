@@ -1,4 +1,7 @@
-# ludumdare
+# Orbitr
+
+## What this is
+This is just a small game I made for the Ludum Dare game jam. You orbit a small star and have to dodge bullets (or fireballs, if you like). Hold click to speed up a little, but you can never stop moving.
 
 ## Project setup
 ```
@@ -13,11 +16,6 @@ npm run serve
 ### Compiles and minifies for production
 ```
 npm run build
-```
-
-### Run your tests
-```
-npm run test
 ```
 
 ### Lints and fixes files
