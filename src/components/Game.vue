@@ -4,29 +4,45 @@
             id="gameCanvas"
             :width="windowWidth"
             :height="windowHeight"
-            @mousedown="orbiterSpeed = 0.01"
+            @mousedown="orbiterSpeed = 0.015"
             @mouseup="orbiterSpeed = 0.005"
         ></canvas>
         <Score
+            v-if="started && !gameOver"
             class="score"
             :score="score"
+            :level="level"
             :time="time"
             :gameOver="gameOver"
         ></Score>
+        <Title
+            v-if="!started || gameOver"
+            :time="time"
+            :gameOver="gameOver"
+            :score="score"
+            :scoreThresh="levelupScore"
+            :started="started"
+            :level="level"
+            class="title"
+            @play="this.levelup"
+        ></Title>
     </div>
 </template>
 
 <script>
     import Vue from 'vue';
     import VueWindowSize from 'vue-window-size';
+    import ColorHash from "color-hash";
     import Score from "./Score.vue";
+    import Title from "./Title.vue";
 
     Vue.use(VueWindowSize);
 
     export default {
         name: "Game",
         components: {
-            Score
+            Score,
+            Title
         },
         data () {
             return {
@@ -40,6 +56,7 @@
                 },
                 levelupSteps: [10, 20, 30, 40, 50],
                 currentStep: 0,
+                levelupScore: 30,
                 width: 600,
                 height: 600,
                 centerRadius: 50,
@@ -47,12 +64,18 @@
                 orbiterWidth: 20,
                 orbiterAngle: 0,
                 orbiterSpeed: 0.005,
+                orbiterColor: "steelblue",
                 fireballWidth: 20,
                 fireballMovement: 10,
                 fireballs: [],
+                fireballColor: "#F80",
                 score: 0,
                 time: 0,
                 gameOver: false,
+                flashingCenter: false,
+                level: localStorage.getItem("level") ? JSON.parse(localStorage.getItem("level")) : 0,
+                started: false,
+                currentTimeouts: []
             }
         },
         methods: {
@@ -62,6 +85,20 @@
                 return Math.sqrt(yDist ** 2 + xDist ** 2);
             },
             drawCenter () {
+                this.flashingCenter = false;
+                const canvas = document.getElementById("gameCanvas");
+                const ctx = canvas.getContext("2d");
+                const [centerX, centerY] = [canvas.width >> 1, canvas.height >> 1];
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, this.centerRadius, 0, 2 * Math.PI, false);
+                ctx.fillStyle = '#CCC';
+                ctx.fill();
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#DDD';
+                ctx.stroke();
+            },
+            flashCenter() {
+                this.flashingCenter = true;
                 const canvas = document.getElementById("gameCanvas");
                 const ctx = canvas.getContext("2d");
                 const [centerX, centerY] = [canvas.width >> 1, canvas.height >> 1];
@@ -69,15 +106,16 @@
                 ctx.arc(centerX, centerY, this.centerRadius, 0, 2 * Math.PI, false);
                 ctx.fillStyle = '#FFF';
                 ctx.fill();
-                ctx.lineWidth = 0;
-                ctx.strokeStyle = '#EEE';
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#FFF';
                 ctx.stroke();
+                setTimeout(this.drawCenter, 100);
             },
             drawOrbiter () {
                 const canvas = document.getElementById("gameCanvas");
                 const distanceY = Math.sin(this.orbiterAngle) * this.orbiterRadius + (canvas.height >> 1);
                 const distanceX = Math.cos(this.orbiterAngle) * this.orbiterRadius + (canvas.width >> 1);
-                this.drawCircle(distanceX, distanceY, this.orbiterWidth, "steelblue");
+                this.drawCircle(distanceX, distanceY, this.orbiterWidth, this.orbiterColor);
             },
             drawCircle (x, y, radius, color) {
                 const canvas = document.getElementById("gameCanvas");
@@ -102,25 +140,27 @@
             },
             doOrbit() {
                 if (this.gameOver === false) {
-                    this.drawCenter();
+                    if (!this.flashingCenter) {
+                        this.drawCenter();
+                    }
                     this.moveOrbiter();
                     this.drawFireballs();
-                    setTimeout(this.doOrbit, 10);
+                    this.currentTimeouts.push(setTimeout(this.doOrbit, 10));
                 }
             },
             incTimer () {
                 if (this.gameOver === false) {
                     this.time++;
                     if (this.time === this.levelupSteps[0]) {
-                        this.levelupSteps.pop();
+                        this.levelupSteps.shift();
                         this.currentStep++;
                     }
-                    setTimeout(this.incTimer, 1000);
+                    this.currentTimeouts.push(setTimeout(this.incTimer, 1000));
                 }
             },
             throwFireball () {
                 this.newFireball();
-                setTimeout(this.throwFireball, this.timeSteps[this.currentStep]);
+                this.currentTimeouts.push(setTimeout(this.throwFireball, this.timeSteps[this.currentStep]));
             },
             fillBg () {
                 const canvas = document.getElementById("gameCanvas");
@@ -138,14 +178,18 @@
                         this.fireballs.splice(i, 1);
                         this.score++;
                         this.drawCircle(fireball.x, fireball.y, this.fireballWidth + 1, "#000");
+                        this.flashCenter();
                     } else if (this.distance(fireball.x, fireball.y, orbiterX, orbiterY) < this.orbiterWidth * 2) {
                         this.gameOver = true;
                     } else {
                         this.drawCircle(fireball.x, fireball.y, this.fireballWidth + 1, "#000");
                         fireball.y -= Math.sin(fireball.angle) * this.fireballMovement * 0.1;
                         fireball.x -= Math.cos(fireball.angle) * this.fireballMovement * 0.1;
-                        this.drawCircle(fireball.x, fireball.y, this.fireballWidth, "#F80");
+                        this.drawCircle(fireball.x, fireball.y, this.fireballWidth, this.fireballColor);
                     }
+                }
+                if (this.score >= this.levelupScore) {
+                    this.gameOver = true;
                 }
             },
             newFireball () {
@@ -178,7 +222,29 @@
                     });
                 }
             },
+            levelup () {
+                if (this.score >= this.levelupScore) {
+                    this.level++;
+                    this.fireballColor = new ColorHash().hex(`${this.level}fire`);
+                    this.orbiterColor = new ColorHash().hex(`${this.level}orbit`);
+                    localStorage.setItem("level", this.level);
+                }
+                this.currentTimeouts.map(l => {
+                    clearTimeout(l);
+                });
+                this.currentTimeouts = [];
+                this.time = 0;
+                this.score = 0;
+                this.fireballs = [];
+                this.orbiterAngle = 0;
+                this.gameOver = false;
+                this.orbiterSpeed = 0.005;
+                this.levelupSteps = [10, 20, 30, 40, 50];
+                this.currentStep = 0;
+                this.startGame();
+            },
             startGame () {
+                this.started = true;
                 this.fillBg();
                 this.drawCenter();
                 this.drawOrbiter();
@@ -188,15 +254,28 @@
             }
         },
         mounted () {
-            this.startGame();
+            if (this.level !== 0) {
+                this.fireballColor = new ColorHash().hex(`${this.level}fire`);
+                this.orbiterColor = new ColorHash().hex(`${this.level}orbit`);
+            }
         }
     }
 </script>
 
 <style scoped>
+    .game {
+        background-color: #000;
+    }
     .score {
         position: absolute;
         width: 100%;
         top: 5%;
+    }
+    .title {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
     }
 </style>

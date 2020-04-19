@@ -1,6 +1,6 @@
 <template>
     <div class="score">
-        {{ displayedVal }}
+        Level: {{ level + 1 }} Score: {{ this.score }} Time: {{ this.time }}s
     </div>
 </template>
 
@@ -10,12 +10,9 @@
         props: {
             score: Number,
             time: Number,
-            gameOver: Boolean
-        },
-        computed: {
-            displayedVal() {
-                return this.gameOver === true ? `Game over! Your score was ${this.score} and you lasted ${this.time}s` : `Score: ${this.score} Time: ${this.time}s`;
-            }
+            level: Number,
+            gameOver: Boolean,
+            msg: String
         }
     }
 </script>
@@ -25,5 +22,6 @@
         text-align: center;
         color: white;
         font-size: 48px;
+        user-select: none;
     }
 </style>
