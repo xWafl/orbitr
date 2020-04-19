@@ -1,12 +1,12 @@
 <template>
     <div class="title">
-        <h1 class="header">Ludumdaregame</h1>
+        <h1 class="header">Orbitr</h1>
         <div class="main">
             <div class="info">
                 <p v-if="!levelup && !gameOver">
                     In this game, you are a spaceship orbiting around a star. You have to dodge the fireballs that are
                     being hurtled towards you. To speed up or slow your ship, hold the mouse button. When you dodge 30
-                    fireballs, you will advance to the next level.
+                    bullets, you will advance to the next level.
                 </p>
                 <p v-if="gameOver && score >= scoreThresh">
                     Great job! You beat level {{ level + 1 }} in {{ time }} seconds.
